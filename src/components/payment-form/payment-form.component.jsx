@@ -28,37 +28,48 @@ const PaymentForm = () => {
 
     setIsProcessingPayment(true);
 
-    const response = await fetch('/.netlify/functions/create-payment-intent', {
-      method: 'post',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ amount: amount * 100 }),
-    }).then((res) => res.json());
+    try {
+      const response = await fetch(
+        '/.netlify/functions/create-payment-intent',
+        {
+          method: 'post',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ amount: amount * 100 }),
+        }
+      );
 
-    const {
-      paymentIntent: { client_secret },
-    } = response;
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
-    const paymentResult = await stripe.confirmCardPayment(client_secret, {
-      payment_method: {
-        card: elements.getElement(CardElement),
-        billing_details: {
-          name: currentUser ? currentUser.displayName : 'Guest',
+      const {
+        paymentIntent: { client_secret },
+      } = await response.json();
+
+      const paymentResult = await stripe.confirmCardPayment(client_secret, {
+        payment_method: {
+          card: elements.getElement(CardElement),
+          billing_details: {
+            name: currentUser ? currentUser.displayName : 'Guest',
+          },
         },
-      },
-    });
+      });
 
-    setIsProcessingPayment(false);
-
-    if (paymentResult.error) {
-      alert(paymentResult.error);
-    } else {
-      if (paymentResult.paymentIntent.status === 'succeeded') {
+      if (paymentResult.error) {
+        throw new Error(paymentResult.error.message);
+      } else if (paymentResult.paymentIntent.status === 'succeeded') {
         alert('Payment Successful');
       }
+    } catch (error) {
+      console.error('Error occurred during payment:', error);
+      alert(`Error: ${error.message}`);
+    } finally {
+      setIsProcessingPayment(false);
     }
   };
+
   return (
     <PaymentFormContainer>
       <FormContainer onSubmit={paymentHandler}>

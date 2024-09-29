@@ -1,4 +1,3 @@
-/* eslint-disable no-undef */
 import { loadStripe } from '@stripe/stripe-js';
 
 export const stripePromise = await loadStripe(
